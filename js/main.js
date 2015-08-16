@@ -39,6 +39,7 @@ var pipewidth = 52;
 var pipes = new Array();
 
 var replayclickable = false;
+var learning = true;
 
 //sounds
 var volume = 30;
@@ -115,6 +116,10 @@ function showSplash()
    
    //fade in the splash
    $("#splash").transition({ opacity: 1 }, 2000, 'ease');
+
+   if(learning){
+       startGame();
+   }
 }
 
 function startGame()
@@ -162,6 +167,10 @@ function gameloop() {
    
    //update the player
    updatePlayer(player);
+
+   if (learning){
+       performAI();
+   }
    
    //create the bounding box
    var box = document.getElementById('player').getBoundingClientRect();
@@ -248,6 +257,26 @@ function gameloop() {
    }
 }
 
+function performAI()
+{
+   //determine the bounding box of the next pipes inner area
+   var nextpipe = pipes[0];
+   if(pipes[0] == null)
+       pipebottom = 180;
+   else {
+       var nextpipeupper = nextpipe.children(".pipe_upper");
+       
+       var pipetop = nextpipeupper.offset().top + nextpipeupper.height();
+       var pipeleft = nextpipeupper.offset().left - 2; // for some reason it starts at the inner pipes offset, not the outer pipes.
+       var piperight = pipeleft + pipewidth;
+       var pipebottom = pipetop + pipeheight;
+    }
+    //console.log(position);
+    if(position > pipebottom-40 && velocity > 0) {
+        playerJump();
+    }
+}
+
 //Handle space bar
 $(document).keydown(function(e){
    //space bar!
@@ -271,7 +300,9 @@ function screenClick()
 {
    if(currentstate == states.GameScreen)
    {
-      playerJump();
+      if(!learning) {
+          playerJump();
+      }
    }
    else if(currentstate == states.SplashScreen)
    {
@@ -366,7 +397,7 @@ function playerDead()
    loopPipeloop = null;
 
    //mobile browsers don't support buzz bindOnce event
-   if(isIncompatible.any())
+   if(isIncompatible.any() || learning)
    {
       //skip right to showing score
       showScore();
@@ -380,6 +411,9 @@ function playerDead()
          });
       });
    }
+  if(learning) {
+     $("#replay").click();
+  }
 }
 
 function showScore()
