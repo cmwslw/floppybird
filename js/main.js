@@ -39,7 +39,11 @@ var pipewidth = 52;
 var pipes = new Array();
 
 var replayclickable = false;
+
+//Learning specific
 var learning = true;
+var speedmult = 1;
+var updatepipecounter = 0;
 
 //sounds
 var volume = 30;
@@ -142,8 +146,7 @@ function startGame()
 
    //start up our loops
    var updaterate = 1000.0 / 60.0 ; //60 times a second
-   loopGameloop = setInterval(gameloop, updaterate);
-   loopPipeloop = setInterval(updatePipes, 1400);
+   loopGameloop = setInterval(gameloop, updaterate / speedmult);
    
    //jump from the start!
    playerJump();
@@ -160,6 +163,12 @@ function updatePlayer(player)
 
 function gameloop() {
    var player = $("#player");
+   $(".pipe").css( 'left', '-=2.222px' );
+   updatepipecounter += 1;
+   if(updatepipecounter == 84) {
+       updatePipes();
+       updatepipecounter = 0;
+   }
    
    //update the player speed/position
    velocity += gravity;
@@ -259,6 +268,18 @@ function gameloop() {
 
 function performAI()
 {
+   //create the bounding box
+   var box = document.getElementById('player').getBoundingClientRect();
+   var origwidth = 34.0;
+   var origheight = 24.0;
+   
+   var boxwidth = origwidth - (Math.sin(Math.abs(rotation) / 90) * 8);
+   var boxheight = (origheight + box.height) / 2;
+   var boxleft = ((box.width - boxwidth) / 2) + box.left;
+   var boxtop = ((box.height - boxheight) / 2) + box.top;
+   var boxright = boxleft + boxwidth;
+   var boxbottom = boxtop + boxheight;
+
    //determine the bounding box of the next pipes inner area
    var nextpipe = pipes[0];
    if(pipes[0] == null)
@@ -272,7 +293,7 @@ function performAI()
        var pipebottom = pipetop + pipeheight;
     }
     //console.log(position);
-    if(position > pipebottom-40 && velocity > 0) {
+    if(boxbottom > pipebottom-15 && velocity > 0) {
         playerJump();
     }
 }
@@ -503,6 +524,11 @@ function updatePipes()
    var topheight = Math.floor((Math.random()*constraint) + padding); //add lower padding
    var bottomheight = (420 - pipeheight) - topheight;
    var newpipe = $('<div class="pipe animated"><div class="pipe_upper" style="height: ' + topheight + 'px;"></div><div class="pipe_lower" style="height: ' + bottomheight + 'px;"></div></div>');
+   //var animspeed = 7500 / speedmult;
+   //var anim = 'animPipe '+animspeed.toString()+'ms linear';
+   //newpipe.css('-webkit-animation', anim);
+   //newpipe.css('animation', anim);
+   newpipe.css('left', '900px');
    $("#flyarea").append(newpipe);
    pipes.push(newpipe);
 }
