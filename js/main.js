@@ -42,8 +42,43 @@ var replayclickable = false;
 
 //Learning specific
 var learning = true;
-var speedmult = 1;
+var speedmult = 100;
 var updatepipecounter = 0;
+
+// START RL AGENT
+var num_inputs = 3; // 9 eyes, each sees 3 numbers (wall, green, red thing proximity)
+var num_actions = 2; // 5 possible angles agent can turn
+var temporal_window = 0; // amount of temporal memory. 0 = agent lives in-the-moment :)
+var network_size = num_inputs*temporal_window + num_actions*temporal_window + num_inputs;
+
+// the value function network computes a value of taking any of the possible actions
+// given an input state. Here we specify one explicitly the hard way
+// but user could also equivalently instead use opt.hidden_layer_sizes = [20,20]
+// to just insert simple relu hidden layers.
+var layer_defs = [];
+layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:network_size});
+layer_defs.push({type:'fc', num_neurons: 5, activation:'relu'});
+layer_defs.push({type:'fc', num_neurons: 5, activation:'relu'});
+layer_defs.push({type:'regression', num_neurons:num_actions});
+
+// options for the Temporal Difference learner that trains the above net
+// by backpropping the temporal difference learning rule.
+var tdtrainer_options = {learning_rate:0.001, momentum:0.0, batch_size:64, l2_decay:0.01};
+
+var opt = {};
+opt.temporal_window = temporal_window;
+opt.experience_size = 30000;
+opt.start_learn_threshold = 1000;
+opt.gamma = 0.7;
+opt.learning_steps_total = 200000;
+opt.learning_steps_burnin = 3000;
+opt.epsilon_min = 0.05;
+opt.epsilon_test_time = 0.05;
+opt.layer_defs = layer_defs;
+opt.tdtrainer_options = tdtrainer_options;
+
+var brain = new deepqlearn.Brain(num_inputs, num_actions, opt); // woohoo
+// END RL AGENT
 
 //sounds
 var volume = 30;
@@ -164,11 +199,10 @@ function updatePlayer(player)
 function gameloop() {
    var player = $("#player");
    $(".pipe").css( 'left', '-=2.222px' );
-   updatepipecounter += 1;
-   if(updatepipecounter == 84) {
+   if(updatepipecounter % 84 == 0) {
        updatePipes();
-       updatepipecounter = 0;
    }
+   updatepipecounter += 1;
    
    //update the player speed/position
    velocity += gravity;
@@ -212,8 +246,9 @@ function gameloop() {
    
    //have they tried to escape through the ceiling? :o
    var ceiling = $("#ceiling");
-   if(boxtop <= (ceiling.offset().top + ceiling.height()))
+   if(boxtop <= (ceiling.offset().top + ceiling.height())) {
       position = 0;
+   }
    
    //we can't go any further without a pipe
    if(pipes[0] == null)
@@ -244,6 +279,8 @@ function gameloop() {
       if(boxtop > pipetop && boxbottom < pipebottom)
       {
          //yeah! we're within bounds
+           brain.backward(0.5);
+           console.log("inside pipe. +0.5");
          
       }
       else
@@ -293,9 +330,37 @@ function performAI()
        var pipebottom = pipetop + pipeheight;
     }
     //console.log(position);
-    if(boxbottom > pipebottom-15 && velocity > 0) {
-        playerJump();
+    if (updatepipecounter < 60*6) {
+        if(boxbottom > pipebottom-15 && velocity > 0) {
+            playerJump();
+        }
+    } else {
+        var inputs = [(boxbottom-pipebottom)/335, (pipeleft-boxright)/335, boxbottom/400];
+        //console.log(inputs);
+        
+        //if(inputs[1] > 100) {
+            //if(boxbottom > pipebottom-15 && velocity > 0) {
+                //playerJump();
+            //}
+        //}
+            var action = brain.forward(inputs)
+            //console.log(action);
+            if(action == 1) {
+                playerJump();
+               var ceiling = $("#ceiling");
+               if(boxtop <= (ceiling.offset().top + ceiling.height())+10) {
+                  position = 0;
+                  if (learning) {
+                      brain.backward(-10);
+                    console.log('Hit ceiling. -10');
+                  }
+               }
+            } else {
+                //brain.backward(0.1);
+                //console.log('did not jump. +0.1');
+            }
     }
+        //*/
 }
 
 //Handle space bar
@@ -398,6 +463,11 @@ function setMedal()
 
 function playerDead()
 {
+    updatepipecounter = 0;
+    if(learning) {
+        brain.backward(-100);
+        console.log('Player died. -100');
+    }
    //stop animating everything!
    $(".animated").css('animation-play-state', 'paused');
    $(".animated").css('-webkit-animation-play-state', 'paused');
@@ -506,6 +576,10 @@ $("#replay").click(function() {
 
 function playerScore()
 {
+    if (learning) {
+        brain.backward(10);
+        console.log('Scored a point. +10');
+    }
    score += 1;
    //play score sound
    soundScore.stop();
