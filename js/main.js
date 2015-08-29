@@ -52,7 +52,7 @@ Floppy.prototype.getMaxNumActions = function(){ return 2; }
 Floppy.prototype.allowedActions = function(s){ return [0, 1]; }
 env = new Floppy();
 //var sa = a0 * this.ns + s0;
-var spec = { alpha: 0.01, epsilon: 0.01 } // see full options on top of this page
+var spec = { alpha: 0.01, epsilon: 0.001 } // see full options on top of this page
 agent = new RL.TDAgent(env, spec); 
 // END RL AGENT
 
@@ -306,7 +306,7 @@ function performAI()
        var pipebottom = pipetop + pipeheight;
     }
     //console.log(position);
-    if (updatepipecounter < 60*6) {
+    if (false) {
         if(boxbottom > pipebottom-15 && velocity > 0) {
             playerJump();
         }
