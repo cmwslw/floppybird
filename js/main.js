@@ -42,12 +42,12 @@ var replayclickable = false;
 
 //Learning specific
 var learning = true;
-var speedmult = 100;
+var speedmult = 1.2;
 var updatepipecounter = 0;
 
 // START RL AGENT
 function Floppy() { }
-Floppy.prototype.getNumStates = function(){ return 2; }
+Floppy.prototype.getNumStates = function(){ return 5; }
 Floppy.prototype.getMaxNumActions = function(){ return 2; }
 Floppy.prototype.allowedActions = function(s){ return [0, 1]; }
 env = new Floppy();
@@ -320,7 +320,19 @@ function performAI()
             //}
         //}
             //var action = brain.forward(inputs)
-            var action = agent.act((boxbottom > pipebottom-15 && velocity > 0) ? 1 : 0);
+            var state;
+            if ((boxbottom - pipebottom) > 15)
+                state = 4;
+            else if ((boxbottom - pipebottom) > 0)
+                state = 3;
+            else if ((boxbottom - pipebottom) > -15)
+                state = 2;
+            else if ((boxbottom - pipebottom) > -30)
+                state = 1;
+            else
+                state = 0;
+            console.log(state)
+            var action = agent.act(state);
             //console.log(action);
             if(action == 1) {
                 playerJump();
@@ -557,6 +569,10 @@ function playerScore()
         agent.learn(10);
         console.log('Scored a point. +10');
     }
+    if (score > 30)
+        agent.epsilon = 0;
+    else if (score > 10)
+        agent.epsilon = 0.0001;
    score += 1;
    //play score sound
    soundScore.stop();
